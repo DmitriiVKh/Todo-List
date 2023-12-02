@@ -16,7 +16,7 @@ function App() {
 
   useEffect(() => {
     fetchTodos();
-  }, []);
+  }, [])
   
 
   return (
