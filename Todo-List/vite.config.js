@@ -7,4 +7,9 @@ export default defineConfig({
   server: {
     open: true,
   },
+  build: {
+    rollupOptions: {
+      external: ["firebase/app", "firebase/database"],
+    },
+  },
 });

@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
+import {ref, onValue, push, remove, update } from 'firebase/database'
+import { db } from './firebase'
 import './App.css'
+
+const todosRef = ref(db, 'todos');
 
 function App() {
   const [todos, setTodos] = useState([]);
@@ -7,33 +11,28 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState(false);
 
-
-  const fetchTodos = async () => {
-    try {
-      const response = await fetch('http://localhost:3002/todos');
-      const data = await response.json();
-      setTodos(data);
-    } catch (error) {
-      console.log('Ошибка при получении данных', error);
-    }
-  };
+  
 
   useEffect(() => {
-    fetchTodos();
+      const unsubscribe = onValue(todosRef, (snapshot) => {
+      const data = [];
+      snapshot.forEach((childSnapshot) => {
+        data.push({ id: childSnapshot.key, ...childSnapshot.val() });
+      });
+      setTodos(data);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
+ 
   const addTodo = async () => {
     try {
-      const response = await fetch('http://localhost:3002/todos',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({title: newTodo})
-      });
-
-      const data = await response.json();
+      const newTodoRef = push(todosRef);
+      await update(newTodoRef, { title: newTodo });
+      const data = { id: newTodoRef.key, title: newTodo };
       setTodos([...todos, data]);
       setNewTodo('');
     } catch (error) {
@@ -43,10 +42,7 @@ function App() {
 
   const deleteTodo = async (id) => {
     try {
-      await fetch(`http://localhost:3002/todos/${id}`, {
-        method: 'DELETE',
-      });
-      setTodos(todos.filter((todo) => todo.id !== id))
+      await remove(ref(todosRef, id));
     } catch (error) {
       console.log('Ошибка при удалении дела', error);
     }
@@ -54,14 +50,7 @@ function App() {
 
   const updateTodo = async (id, newTitle) => {
     try{
-      await fetch(`http://localhost:3002/todos/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({title: newTitle}),
-      });
-      setTodos(todos.map((todo) => (todo.id === id ? {...todo, title: newTitle} : todo)))
+      await update(ref(todosRef, id), { title: newTitle });
     } catch (error) {
       console.log('Ошибка при обновлении дел', error);
     }
@@ -78,7 +67,9 @@ function App() {
     setSortMode(!sortMode);
   };
 
-  const sortedTodos = sortMode ? [...todos].sort((a, b) => a.title.localeCompare(b.title)) : [...todos];
+  const sortedTodos = sortMode 
+  ? [...todos].sort((a, b) => a.title.localeCompare(b.title)) 
+  : [...todos];
   
   
 
